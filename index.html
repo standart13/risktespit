@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HSE Risk Analizi</title>
+    
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --border-color: #ced4da;
+            --text-color: #333333;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            padding: 20px; 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            margin: 0;
+        }
+        .container { 
+            background-color: var(--card-bg); 
+            padding: 30px; 
+            border-radius: 12px; 
+            max-width: 800px; 
+            margin: auto; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        .page { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .header { 
+            background-color: #ffc107; 
+            padding: 15px; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 1.2rem;
+            margin-bottom: 25px; 
+            border-radius: 8px;
+            color: #000;
+        }
+        
+        .dynamic-section {
+            background-color: #f8f9fa;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9rem; }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 10px; 
+            box-sizing: border-box; 
+            border: 1px solid var(--border-color); 
+            border-radius: 6px; 
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+        
+        .row { display: flex; gap: 15px; }
+        .col { flex: 1; }
+        
+        .btn-group { display: flex; justify-content: space-between; margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px; }
+        
+        button { 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 6px; 
+            background-color: var(--primary-color); 
+            color: white; 
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer; 
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #004494; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        
+        .btn-add { background-color: var(--success-color); width: 100%; margin-bottom: 20px; }
+        .btn-add:hover { background-color: #218838; }
+        
+        .btn-remove { 
+            background-color: var(--danger-color); 
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        .btn-remove:hover { background-color: #c82333; }
+        
+        .risk-yuksek { background-color: #dc3545 !important; color: white !important; font-weight: bold; }
+        
+        .foto-yuklendi { border: 2px solid var(--success-color) !important; background-color: #e8f5e9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <form id="riskForm">
+        
+        <div id="page1" class="page active">
+            <div class="header">1. Sayfa - Lokasyon Bilgileri</div>
+            <div class="form-group">
+                <label for="departman">Departman</label>
+                <select id="departman" required>
+                    <option value="">Seçiniz</option>
+                    <option value="Dökümhane">Dökümhane</option>
+                    <option value="Motor">Motor</option>
+                    <option value="Vites Kutusu">Vites Kutusu</option>
+                    <option value="Lojistik">Lojistik</option>
+                </select>
+            </div>
+            <div class="row">
+                <div class="col form-group">
+                    <label for="atolye">Atölye</label>
+                    <input type="text" id="atolye" required>
+                </div>
+                <div class="col form-group">
+                    <label for="uet">UET</label>
+                    <input type="text" id="uet" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="posta">Posta</label>
+                <input type="text" id="posta" required>
+            </div>
+            <div class="form-group">
+                <label for="postaFoto">Posta Fotoğrafı</label>
+                <input type="file" id="postaFoto" accept="image/jpeg, image/png" capture="environment" onchange="arayuzGuncelle(this)">
+            </div>
+            <div class="btn-group">
+                <button type="button" disabled>Geri</button>
+                <button type="button" onclick="nextPage(1, 2)">İleri</button>
+            </div>
+        </div>
+
+        <div id="page2" class="page">
+            <div class="header">2. Sayfa - Mevcut Güvenlik Önlemleri</div>
+            
+            <div id="guvenlikOnlemleriContainer"></div>
+            
+            <button type="button" class="btn-add" onclick="addGuvenlikOnlemi()">+ Yeni Güvenlik Önlemi Ekle</button>
+
+            <div class="btn-group">
+                <button type="button" onclick="prevPage(2, 1)">Geri</button>
+                <button type="button" onclick="nextPage(2, 3)">İleri</button>
+            </div>
+        </div>
+
+        <div id="page3" class="page">
+            <div class="header">3. Sayfa - Risk Analizi ve Aksiyonlar</div>
+            
+            <div id="risklerContainer"></div>
+            
+            <button type="button" class="btn-add" onclick="addRisk()">+ Yeni Risk Ekle</button>
+
+            <div class="btn-group">
+                <button type="button" onclick="prevPage(3, 2)">Geri</button>
+                <button type="button" onclick="submitForm()">Kaydet</button>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzJkHDsItLE1OT-1mqHcVCKKdEkbyPzxDeU38Mw0ipw0-LK-zkD-EVR31puLVlk5WTr/exec";
+
+    function arayuzGuncelle(inputElement) {
+        if (inputElement.files && inputElement.files.length > 0) {
+            inputElement.classList.add('foto-yuklendi');
+        } else {
+            inputElement.classList.remove('foto-yuklendi');
+        }
+    }
+
+    function nextPage(currentPage, nextPage) {
+        document.getElementById('page' + currentPage).classList.remove('active');
+        document.getElementById('page' + nextPage).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    function prevPage(currentPage, prevPage) {
+        document.getElementById('page' + currentPage).classList.remove('active');
+        document.getElementById('page' + prevPage).classList.add('active');
+        window.scrollTo(0, 0);
+    }
+
+    function addGuvenlikOnlemi() {
+        const container = document.getElementById('guvenlikOnlemleriContainer');
+        const sectionHTML = `
+            <div class="dynamic-section">
+                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Mevcut Güvenlik Önlemleri Açıklaması</label>
+                    <textarea class="guvenlik-aciklama" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Güvenlik Önlemi Fotoğrafı</label>
+                    <input type="file" class="guvenlik-foto" accept="image/jpeg, image/png" capture="environment" onchange="arayuzGuncelle(this)">
+                </div>
+                <div class="form-group">
+                    <label>Giderilen Riskler</label>
+                    <textarea class="giderilen-riskler" rows="3" required></textarea>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', sectionHTML);
+    }
+
+    function addRisk() {
+        const container = document.getElementById('risklerContainer');
+        const sectionHTML = `
+            <div class="dynamic-section">
+                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Mevcut Riskler ve Açıklaması</label>
+                    <textarea class="risk-aciklama" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Risk Fotoğrafı</label>
+                    <input type="file" class="risk-foto" accept="image/jpeg, image/png" capture="environment" onchange="arayuzGuncelle(this)">
+                </div>
+                <div class="row">
+                    <div class="col form-group">
+                        <label>Olasılık (1-5)</label>
+                        <input type="number" class="olasilik-input" min="1" max="5" oninput="hesaplaDinamikSkor(this)" required>
+                    </div>
+                    <div class="col form-group">
+                        <label>Şiddet (1-5)</label>
+                        <input type="number" class="siddet-input" min="1" max="5" oninput="hesaplaDinamikSkor(this)" required>
+                    </div>
+                    <div class="col form-group">
+                        <label>Risk Skoru</label>
+                        <input type="text" class="skor-input" readonly>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col form-group">
+                        <label>Atanan Aksiyon Sorumlusu</label>
+                        <input type="text" class="sorumlu-input" required>
+                    </div>
+                    <div class="col form-group">
+                        <label>Aksiyon Tarihi</label>
+                        <input type="date" class="tarih-input" required>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', sectionHTML);
+    }
+
+    function hesaplaDinamikSkor(element) {
+        const section = element.closest('.dynamic-section');
+        const olasilik = section.querySelector('.olasilik-input').value;
+        const siddet = section.querySelector('.siddet-input').value;
+        const skorInput = section.querySelector('.skor-input');
+        
+        if(olasilik && siddet) {
+            const skor = olasilik * siddet;
+            skorInput.value = skor;
+            
+            if(skor > 9) {
+                skorInput.classList.add('risk-yuksek');
+            } else {
+                skorInput.classList.remove('risk-yuksek');
+            }
+        } else {
+            skorInput.value = '';
+            skorInput.classList.remove('risk-yuksek');
+        }
+    }
+
+    async function processImage(file) {
+        if (!file) return null;
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800;
+                    const MAX_HEIGHT = 800;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    }
+
+    async function submitForm() {
+        const submitBtn = document.querySelector('button[onclick="submitForm()"]');
+        submitBtn.disabled = true;
+        submitBtn.innerText = "İşleniyor ve Gönderiliyor...";
+
+        try {
+            const payload = {
+                departman: document.getElementById('departman').value,
+                atolye: document.getElementById('atolye').value.toLocaleLowerCase('tr-TR'),
+                uet: document.getElementById('uet').value.toLocaleLowerCase('tr-TR'),
+                posta: document.getElementById('posta').value.toLocaleLowerCase('tr-TR'),
+                postaFoto: await processImage(document.getElementById('postaFoto').files[0]),
+                guvenlikOnlemleri: [],
+                riskler: []
+            };
+
+            const guvenlikSecs = document.querySelectorAll('#guvenlikOnlemleriContainer .dynamic-section');
+            for (let sec of guvenlikSecs) {
+                payload.guvenlikOnlemleri.push({
+                    aciklama: sec.querySelector('.guvenlik-aciklama').value,
+                    giderilenRiskler: sec.querySelector('.giderilen-riskler').value,
+                    foto: await processImage(sec.querySelector('.guvenlik-foto').files[0])
+                });
+            }
+
+            const riskSecs = document.querySelectorAll('#risklerContainer .dynamic-section');
+            for (let sec of riskSecs) {
+                payload.riskler.push({
+                    aciklama: sec.querySelector('.risk-aciklama').value,
+                    olasilik: sec.querySelector('.olasilik-input').value,
+                    siddet: sec.querySelector('.siddet-input').value,
+                    skor: sec.querySelector('.skor-input').value,
+                    sorumlu: sec.querySelector('.sorumlu-input').value,
+                    tarih: sec.querySelector('.tarih-input').value,
+                    foto: await processImage(sec.querySelector('.risk-foto').files[0])
+                });
+            }
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            const result = await response.json();
+
+            if (result.status === "success") {
+                alert("Veriler Google Sheets üzerine başarıyla kaydedildi.");
+                document.getElementById('riskForm').reset();
+                
+                // Form sıfırlandıktan sonra yeşil çerçeveleri kaldır
+                document.querySelectorAll('.foto-yuklendi').forEach(el => el.classList.remove('foto-yuklendi'));
+                
+                window.scrollTo(0, 0);
+                window.location.reload();
+            } else {
+                alert("Hata oluştu: " + result.message);
+            }
+            
+        } catch (error) {
+            console.error("İletişim hatası:", error);
+            alert("Veri gönderimi başarısız oldu. Ağ bağlantınızı kontrol edin.");
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = "Kaydet";
+        }
+    }
+
+    window.onload = function() {
+        addGuvenlikOnlemi();
+        addRisk();
+    };
+</script>
+
+</body>
+</html>
