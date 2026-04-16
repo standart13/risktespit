@@ -456,43 +456,43 @@
 
     // AI Analiz Fonksiyonu
     async function aiAnalizEt() {
-        const file = document.getElementById('postaFoto').files[0];
-        if (!file) return alert("Lütfen postanın fotoğrafını çekin.");
+    const file = document.getElementById('postaFoto').files[0];
+    if (!file) return alert("Hata: Analiz için fotoğraf gereklidir.");
+    
+    showLoading("Yapay Zeka Görsel Veriyi İşliyor...");
+    try {
+        const b64 = await processImage(file);
+        const res = await fetch(API_URL, { 
+            method: 'POST', 
+            body: JSON.stringify({ action: "analyzeImage", imageB64: b64 }),
+            redirect: 'follow'
+        });
+        const result = await res.json();
         
-        showLoading("AI Veriyi Analiz Ediyor...");
-        try {
-            const b64 = await processImage(file);
-            const res = await fetch(API_URL, { 
-                method: 'POST', 
-                body: JSON.stringify({ action: "analyzeImage", imageB64: b64 }),
-                redirect: 'follow' // Apps Script yönlendirmelerini takip etmek için gerekli
-            });
-            const result = await res.json();
-            
-            if (result.status === "success") {
-                const list = document.getElementById('suggestionList'); 
-                list.innerHTML = "";
-                if (result.data && result.data.length > 0) {
-                    result.data.forEach(r => {
-                        const span = document.createElement('div'); 
-                        span.className = "suggestion-item"; 
-                        span.innerHTML = `⚠️ ${r} <span>+ Ekle</span>`;
-                        span.onclick = () => addRisk(r); 
-                        list.appendChild(span);
-                    });
-                    document.getElementById('aiSuggestions').style.display = "block";
-                } else {
-                    alert("Bilgi: Yapay zeka fotoğrafta belirgin bir risk unsuru tespit edemedi.");
-                }
+        if (result.status === "success") {
+            const list = document.getElementById('suggestionList'); 
+            list.innerHTML = "";
+            if (result.data && result.data.length > 0) {
+                result.data.forEach(item => {
+                    const div = document.createElement('div'); 
+                    div.className = "suggestion-item"; 
+                    div.innerHTML = `⚠️ <b>Tehlike:</b> ${item.tehlike} <br> 📉 <b>Risk:</b> ${item.risk} (O:${item.olasilik} Ş:${item.siddet}) <span>+ Ekle</span>`;
+                    div.onclick = () => addRisk(item.tehlike, item.risk, item.olasilik, item.siddet); 
+                    list.appendChild(div);
+                });
+                document.getElementById('aiSuggestions').style.display = "block";
             } else {
-                alert("API Hatası: " + (result.message || "Bilinmeyen hata."));
+                alert("Bilgi: Görselde kurallara uygun risk tespit edilemedi.");
             }
-        } catch (e) { 
-            alert("Bağlantı Hatası: Sunucuya ulaşılamıyor. Detay: " + e.message); 
-        } finally { 
-            hideLoading();
+        } else {
+            alert("API Hatası: " + result.message);
         }
+    } catch (e) { 
+        alert("Bağlantı Hatası: Sunucuya ulaşılamıyor."); 
+    } finally { 
+        hideLoading();
     }
+}
 
     // Önlem Ekleme Fonksiyonu
     function addGuvenlikOnlemi() {
@@ -515,51 +515,58 @@
     }
 
     // Risk Ekleme Fonksiyonu
-    function addRisk(aiText = "") {
-        document.getElementById('risklerContainer').insertAdjacentHTML('beforeend', `
-            <div class="dynamic-section">
-                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
-                <label>Mevcut Tehlike Açıklaması</label>
-                <textarea class="tehlike-aciklama" rows="2" required placeholder="Giriş yapın..."></textarea>
-                
-                <label>Mevcut Risk Açıklaması</label>
-                <textarea class="risk-aciklama" rows="2" required placeholder="Giriş yapın...">${aiText}</textarea>
-                
-                <label>Mevcut Risk Fotoğrafı</label>
-                <div class="photo-upload-widget">
-                    <div class="photo-icon">📷</div>
-                    <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
-                    <input type="file" class="risk-foto" accept="image/*" onchange="arayuzGuncelle(this)">
+    function addRisk(tehlikeText = "", riskText = "", olasilikVal = "", siddetVal = "") {
+    const container = document.getElementById('risklerContainer');
+    const id = Date.now();
+    container.insertAdjacentHTML('beforeend', `
+        <div class="dynamic-section" id="risk-section-${id}">
+            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
+            <label>Mevcut Tehlike Açıklaması</label>
+            <textarea class="tehlike-aciklama" rows="2" required placeholder="Giriş yapın...">${tehlikeText}</textarea>
+            
+            <label>Mevcut Risk Açıklaması</label>
+            <textarea class="risk-aciklama" rows="2" required placeholder="Giriş yapın...">${riskText}</textarea>
+            
+            <label>Mevcut Risk Fotoğrafı</label>
+            <div class="photo-upload-widget">
+                <div class="photo-icon">📷</div>
+                <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
+                <input type="file" class="risk-foto" accept="image/*" onchange="arayuzGuncelle(this)">
+            </div>
+            
+            <div class="row">
+                <div class="col">
+                    <label>Olasılık (1-5)</label>
+                    <input type="number" class="olasilik-input" min="1" max="5" value="${olasilikVal}" oninput="hesaplaDinamikSkor(this)" required>
                 </div>
-                
-                <div class="row">
-                    <div class="col">
-                        <label>Olasılık (1-5)</label>
-                        <input type="number" class="olasilik-input" min="1" max="5" oninput="hesaplaDinamikSkor(this)" required>
-                    </div>
-                    <div class="col">
-                        <label>Şiddet (1-5)</label>
-                        <input type="number" class="siddet-input" min="1" max="5" oninput="hesaplaDinamikSkor(this)" required>
-                    </div>
-                    <div class="col">
-                        <label>Risk Skoru</label>
-                        <input type="text" class="skor-input" readonly placeholder="-">
-                    </div>
+                <div class="col">
+                    <label>Şiddet (1-5)</label>
+                    <input type="number" class="siddet-input" min="1" max="5" value="${siddetVal}" oninput="hesaplaDinamikSkor(this)" required>
                 </div>
-                
-                <div class="row">
-                    <div class="col">
-                        <label>Aksiyon Sorumlusu</label>
-                        <input type="text" class="sorumlu-input" required placeholder="Ad Soyad">
-                    </div>
-                    <div class="col">
-                        <label>Aksiyon Tarihi</label>
-                        <input type="date" class="tarih-input" required>
-                    </div>
+                <div class="col">
+                    <label>Risk Skoru</label>
+                    <input type="text" class="skor-input" readonly placeholder="-">
                 </div>
-            </div>`);
-        if(aiText) switchPage(3);
-    }
+            </div>
+            
+            <div class="row">
+                <div class="col">
+                    <label>Aksiyon Sorumlusu</label>
+                    <input type="text" class="sorumlu-input" required placeholder="Ad Soyad">
+                </div>
+                <div class="col">
+                    <label>Aksiyon Tarihi</label>
+                    <input type="date" class="tarih-input" required>
+                </div>
+            </div>
+        </div>`);
+    
+    const section = document.getElementById(`risk-section-${id}`);
+    const olasilikInput = section.querySelector('.olasilik-input');
+    hesaplaDinamikSkor(olasilikInput);
+    
+    if(tehlikeText) switchPage(3);
+}
 
     // Skor Hesaplama Fonksiyonu
     function hesaplaDinamikSkor(el) {
