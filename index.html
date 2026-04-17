@@ -86,11 +86,36 @@
         .dynamic-section {
             background-color: var(--bg-card);
             border-radius: var(--radius-lg);
-            padding: 36px 16px 16px 16px; 
+            padding: 16px; /* AÇILIR KAPANIR BAŞLIK İÇİN DÜZELTİLDİ */
             margin-bottom: 12px;
             position: relative;
             box-shadow: 0 2px 12px rgba(0,0,0,0.04);
             border: 1px solid #E5E5EA;
+        }
+
+        /* AÇILIR KAPANIR (ACCORDION) STİLLERİ */
+        .accordion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .accordion-title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--ios-blue);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 75%;
+        }
+        .accordion-body {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #E5E5EA;
+        }
+        .accordion-body.hidden {
+            display: none;
         }
 
         /* Etiketler (Labels) */
@@ -107,7 +132,8 @@
         }
         
         .widget-card > label:first-child,
-        .dynamic-section > label:first-of-type { 
+        .dynamic-section > label:first-of-type,
+        .accordion-body > label:first-child { 
             margin-top: 0; 
         }
 
@@ -167,9 +193,6 @@
             padding: 6px 12px; 
             width: auto; 
             font-size: 12px; 
-            position: absolute; 
-            top: 10px; 
-            right: 10px; 
             border-radius: 8px; 
         }
 
@@ -382,7 +405,7 @@
     // WEB APP URL'NİZ BURAYA GELECEK
     const API_URL = "https://script.google.com/macros/s/AKfycbzJkHDsItLE1OT-1mqHcVCKKdEkbyPzxDeU38Mw0ipw0-LK-zkD-EVR31puLVlk5WTr/exec";
 
-    // Hiyerarşi Verisi (Vites Kutusu Atölye 1 ve Atölye 2 güncellemeli)
+    // Hiyerarşi Verisi
     const hiyerarşi = {
         "Motor": { "2C": ["Külas", "Krank", "Bakım"], "MM11": ["Giydirme", "Baz", "Sıcak Deneme", "Bakım"] },
         "Dökümhane": { "Döküm": ["Bakım", "Kalıp Bakım", "İşleme İmalat"], "İşleme": ["Motor Bloğu", "Volan Biyel", "Bakım"] },
@@ -427,6 +450,17 @@
         }
     }
 
+    // Açılır Kapanır (Accordion) İşlevleri
+    function toggleAccordion(el) {
+        const body = el.nextElementSibling;
+        body.classList.toggle('hidden');
+    }
+
+    function updateAccordionTitle(input, defaultText) {
+        const headerTitle = input.closest('.dynamic-section').querySelector('.accordion-title');
+        headerTitle.innerText = input.value || defaultText;
+    }
+
     // Yükleme (Loading) Animasyonu Kontrolleri
     let progressInterval;
     function showLoading(text) {
@@ -456,117 +490,138 @@
 
     // AI Analiz Fonksiyonu
     async function aiAnalizEt() {
-    const file = document.getElementById('postaFoto').files[0];
-    if (!file) return alert("Hata: Analiz için fotoğraf gereklidir.");
-    
-    showLoading("Yapay Zeka Görsel Veriyi İşliyor...");
-    try {
-        const b64 = await processImage(file);
-        const res = await fetch(API_URL, { 
-            method: 'POST', 
-            body: JSON.stringify({ action: "analyzeImage", imageB64: b64 }),
-            redirect: 'follow'
-        });
-        const result = await res.json();
+        const file = document.getElementById('postaFoto').files[0];
+        if (!file) return alert("Hata: Analiz için fotoğraf gereklidir.");
         
-        if (result.status === "success") {
-            const list = document.getElementById('suggestionList'); 
-            list.innerHTML = "";
-            if (result.data && result.data.length > 0) {
-                result.data.forEach(item => {
-                    const div = document.createElement('div'); 
-                    div.className = "suggestion-item"; 
-                    div.innerHTML = `⚠️ <b>Tehlike:</b> ${item.tehlike} <br> 📉 <b>Risk:</b> ${item.risk} (O:${item.olasilik} Ş:${item.siddet}) <span>+ Ekle</span>`;
-                    div.onclick = () => addRisk(item.tehlike, item.risk, item.olasilik, item.siddet); 
-                    list.appendChild(div);
-                });
-                document.getElementById('aiSuggestions').style.display = "block";
+        showLoading("Yapay Zeka Görsel Veriyi İşliyor...");
+        try {
+            const b64 = await processImage(file);
+            const res = await fetch(API_URL, { 
+                method: 'POST', 
+                body: JSON.stringify({ action: "analyzeImage", imageB64: b64 }),
+                redirect: 'follow'
+            });
+            const result = await res.json();
+            
+            if (result.status === "success") {
+                const list = document.getElementById('suggestionList'); 
+                list.innerHTML = "";
+                if (result.data && result.data.length > 0) {
+                    result.data.forEach(item => {
+                        const div = document.createElement('div'); 
+                        div.className = "suggestion-item"; 
+                        div.innerHTML = `⚠️ <b>Tehlike:</b> ${item.tehlike} <br> 📉 <b>Risk:</b> ${item.risk} (O:${item.olasilik} Ş:${item.siddet}) <span class="durum-etiketi">+ Ekle</span>`;
+                        
+                        div.onclick = function() {
+                            addRisk(item.tehlike, item.risk, item.olasilik, item.siddet);
+                            this.style.opacity = "0.5";
+                            this.style.pointerEvents = "none";
+                            this.style.borderColor = "#E5E5EA";
+                            const span = this.querySelector('.durum-etiketi');
+                            span.innerText = "✓ Eklendi";
+                            span.style.color = "#8E8E93";
+                        }; 
+                        
+                        list.appendChild(div);
+                    });
+                    document.getElementById('aiSuggestions').style.display = "block";
+                } else {
+                    alert("Bilgi: Görselde kurallara uygun risk tespit edilemedi.");
+                }
             } else {
-                alert("Bilgi: Görselde kurallara uygun risk tespit edilemedi.");
+                alert("API Hatası: " + result.message);
             }
-        } else {
-            alert("API Hatası: " + result.message);
+        } catch (e) { 
+            alert("Bağlantı Hatası: Sunucuya ulaşılamıyor."); 
+        } finally { 
+            hideLoading();
         }
-    } catch (e) { 
-        alert("Bağlantı Hatası: Sunucuya ulaşılamıyor."); 
-    } finally { 
-        hideLoading();
     }
-}
 
     // Önlem Ekleme Fonksiyonu
     function addGuvenlikOnlemi() {
         document.getElementById('guvenlikOnlemleriContainer').insertAdjacentHTML('beforeend', `
             <div class="dynamic-section">
-                <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
-                <label>Mevcut Güvenlik Önlemleri Açıklaması</label>
-                <textarea class="guvenlik-aciklama" rows="2" required placeholder="Giriş yapın..."></textarea>
-                
-                <label>Güvenlik Önlemi Fotoğrafı</label>
-                <div class="photo-upload-widget">
-                    <div class="photo-icon">📷</div>
-                    <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
-                    <input type="file" class="guvenlik-foto" accept="image/*" onchange="arayuzGuncelle(this)">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-title">Yeni Güvenlik Önlemi</span>
+                    <button type="button" class="btn-remove" onclick="event.stopPropagation(); this.closest('.dynamic-section').remove()">Sil</button>
                 </div>
-                
-                <label>Giderilen Riskler</label>
-                <textarea class="giderilen-riskler" rows="2" required placeholder="Hangi riskleri engelliyor?"></textarea>
+                <div class="accordion-body">
+                    <label>Mevcut Güvenlik Önlemleri Açıklaması</label>
+                    <textarea class="guvenlik-aciklama" rows="2" required placeholder="Giriş yapın..." oninput="updateAccordionTitle(this, 'Yeni Güvenlik Önlemi')"></textarea>
+                    
+                    <label>Güvenlik Önlemi Fotoğrafı</label>
+                    <div class="photo-upload-widget">
+                        <div class="photo-icon">📷</div>
+                        <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
+                        <input type="file" class="guvenlik-foto" accept="image/*" onchange="arayuzGuncelle(this)">
+                    </div>
+                    
+                    <label>Giderilen Riskler</label>
+                    <textarea class="giderilen-riskler" rows="2" required placeholder="Hangi riskleri engelliyor?"></textarea>
+                </div>
             </div>`);
     }
 
     // Risk Ekleme Fonksiyonu
     function addRisk(tehlikeText = "", riskText = "", olasilikVal = "", siddetVal = "") {
-    const container = document.getElementById('risklerContainer');
-    const id = Date.now();
-    container.insertAdjacentHTML('beforeend', `
-        <div class="dynamic-section" id="risk-section-${id}">
-            <button type="button" class="btn-remove" onclick="this.parentElement.remove()">Sil</button>
-            <label>Mevcut Tehlike Açıklaması</label>
-            <textarea class="tehlike-aciklama" rows="2" required placeholder="Giriş yapın...">${tehlikeText}</textarea>
-            
-            <label>Mevcut Risk Açıklaması</label>
-            <textarea class="risk-aciklama" rows="2" required placeholder="Giriş yapın...">${riskText}</textarea>
-            
-            <label>Mevcut Risk Fotoğrafı</label>
-            <div class="photo-upload-widget">
-                <div class="photo-icon">📷</div>
-                <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
-                <input type="file" class="risk-foto" accept="image/*" onchange="arayuzGuncelle(this)">
-            </div>
-            
-            <div class="row">
-                <div class="col">
-                    <label>Olasılık (1-5)</label>
-                    <input type="number" class="olasilik-input" min="1" max="5" value="${olasilikVal}" oninput="hesaplaDinamikSkor(this)" required>
+        const container = document.getElementById('risklerContainer');
+        const id = Date.now();
+        const baslik = tehlikeText || "Yeni Risk";
+        const stateClass = tehlikeText ? "hidden" : ""; 
+
+        container.insertAdjacentHTML('beforeend', `
+            <div class="dynamic-section" id="risk-section-${id}">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-title">${baslik}</span>
+                    <button type="button" class="btn-remove" onclick="event.stopPropagation(); this.closest('.dynamic-section').remove()">Sil</button>
                 </div>
-                <div class="col">
-                    <label>Şiddet (1-5)</label>
-                    <input type="number" class="siddet-input" min="1" max="5" value="${siddetVal}" oninput="hesaplaDinamikSkor(this)" required>
+                <div class="accordion-body ${stateClass}">
+                    <label>Mevcut Tehlike Açıklaması</label>
+                    <textarea class="tehlike-aciklama" rows="2" required placeholder="Giriş yapın..." oninput="updateAccordionTitle(this, 'Yeni Risk')">${tehlikeText}</textarea>
+                    
+                    <label>Mevcut Risk Açıklaması</label>
+                    <textarea class="risk-aciklama" rows="2" required placeholder="Giriş yapın...">${riskText}</textarea>
+                    
+                    <label>Mevcut Risk Fotoğrafı</label>
+                    <div class="photo-upload-widget">
+                        <div class="photo-icon">📷</div>
+                        <div style="flex:1"><div class="upload-text" style="font-weight:600; font-size:13px;">Fotoğraf Seç / Çek</div></div>
+                        <input type="file" class="risk-foto" accept="image/*" onchange="arayuzGuncelle(this)">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <label>Olasılık (1-5)</label>
+                            <input type="number" class="olasilik-input" min="1" max="5" value="${olasilikVal}" oninput="hesaplaDinamikSkor(this)" required>
+                        </div>
+                        <div class="col">
+                            <label>Şiddet (1-5)</label>
+                            <input type="number" class="siddet-input" min="1" max="5" value="${siddetVal}" oninput="hesaplaDinamikSkor(this)" required>
+                        </div>
+                        <div class="col">
+                            <label>Risk Skoru</label>
+                            <input type="text" class="skor-input" readonly placeholder="-">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col">
+                            <label>Aksiyon Sorumlusu</label>
+                            <input type="text" class="sorumlu-input" required placeholder="Ad Soyad">
+                        </div>
+                        <div class="col">
+                            <label>Aksiyon Tarihi</label>
+                            <input type="date" class="tarih-input" required>
+                        </div>
+                    </div>
                 </div>
-                <div class="col">
-                    <label>Risk Skoru</label>
-                    <input type="text" class="skor-input" readonly placeholder="-">
-                </div>
-            </div>
-            
-            <div class="row">
-                <div class="col">
-                    <label>Aksiyon Sorumlusu</label>
-                    <input type="text" class="sorumlu-input" required placeholder="Ad Soyad">
-                </div>
-                <div class="col">
-                    <label>Aksiyon Tarihi</label>
-                    <input type="date" class="tarih-input" required>
-                </div>
-            </div>
-        </div>`);
-    
-    const section = document.getElementById(`risk-section-${id}`);
-    const olasilikInput = section.querySelector('.olasilik-input');
-    hesaplaDinamikSkor(olasilikInput);
-    
-    if(tehlikeText) switchPage(3);
-}
+            </div>`);
+        
+        const section = document.getElementById(`risk-section-${id}`);
+        const olasilikInput = section.querySelector('.olasilik-input');
+        hesaplaDinamikSkor(olasilikInput);
+    }
 
     // Skor Hesaplama Fonksiyonu
     function hesaplaDinamikSkor(el) {
