@@ -570,9 +570,11 @@ input.err, select.err { border-color:var(--danger); box-shadow:0 0 0 3px rgba(22
           </div>
           <div class="col">
             <label class="flabel">UET</label>
-            <select id="uet">
-              <option value="" disabled selected>Önce Atölye</option>
-            </select>
+            <div id="uetWrap">
+              <select id="uet">
+                <option value="" disabled selected>Önce Atölye</option>
+              </select>
+            </div>
           </div>
         </div>
         <label class="flabel">Posta</label>
@@ -603,15 +605,15 @@ input.err, select.err { border-color:var(--danger); box-shadow:0 0 0 3px rgba(22
 
     <!-- SAYFA 2 -->
     <div class="page" id="page2">
-      <div class="s-title">Güvenlik <span>Önlemleri</span></div>
+      <div class="s-title">Mevcut Güvenlik <span>Önlemleri</span></div>
       <div class="s-sub">Mevcut koruyucu sistemleri ve önlemleri girin.</div>
       <div id="gCont"></div>
-      <button class="btn btn-out" onclick="addG()">+ Yeni Güvenlik Önlemi</button>
+      <button class="btn btn-out" onclick="addG()">+ Güvenlik Önlemi Ekle</button>
     </div>
 
     <!-- SAYFA 3 -->
     <div class="page" id="page3">
-      <div class="s-title">Risk <span>Analizi</span></div>
+      <div class="s-title">Mevcut <span>Riskler</span></div>
       <div class="s-sub">Riskleri puanlayın ve aksiyon planı oluşturun.</div>
       <div id="rCont"></div>
       <button class="btn btn-out" onclick="addR()">+ Yeni Risk Ekle</button>
@@ -634,27 +636,47 @@ const CFG = {
 //  HİYERARŞİ
 // ══════════════════════════════════════
 const H = {
-  "Motor":        { "2C":["Külas","Krank","Bakım"], "MM11":["Giydirme","Baz","Sıcak Deneme","Bakım"] },
-  "Dökümhane":    { "Döküm":["Bakım","Kalıp Bakım","İşleme İmalat"], "İşleme":["Motor Bloğu","Volan Biyel","Bakım"] },
-  "Vites Kutusu": { "Atölye 1":["Montaj","Karter","Isıl İşlem"], "Atölye 2":["Bakım","Dişli","Mil"] },
-  "Lojistik":     { "İç Akışlar":["İç Akışlar"], "Sevkiyat":["Sevkiyat"] },
-  "Bakım":        { "MRO Ambar":["Ambar"], "Bileme":["Bileme"] },
-  "Ar-Ge":        { "Motor Deneme":["Deneme"] }
+  "Motor":        { "2C":["Külas","Krank","Bakım"], "MM11":["Giydirme","Baz","Sıcak Deneme","Bakım"], "Diğer":["Diğer"] },
+  "Dökümhane":    { "Döküm":["Bakım","Kalıp Bakım","İşleme İmalat"], "İşleme":["Motor Bloğu","Volan Biyel","Bakım"], "Diğer":["Diğer"] },
+  "Vites Kutusu": { "Atölye 1":["Montaj","Karter","Isıl İşlem"], "Atölye 2":["Bakım","Dişli","Mil"], "Diğer":["Diğer"] },
+  "Lojistik":     { "İç Akışlar":["İç Akışlar"], "Sevkiyat":["Sevkiyat"], "Diğer":["Diğer"] },
+  "Bakım":        { "MRO Ambar":["Ambar"], "Bileme":["Bileme"], "Diğer":["Diğer"] },
+  "Ar-Ge":        { "Motor Deneme":["Deneme"], "Diğer":["Diğer"] }
 };
 
 function updH(t) {
   const dep=document.getElementById("departman").value;
-  const aEl=document.getElementById("atolye"), uEl=document.getElementById("uet");
+  const aEl=document.getElementById("atolye"), uWrap=document.getElementById("uetWrap");
   if(t==="atolye"){
     aEl.innerHTML='<option value="" disabled selected>Seçiniz</option>';
-    uEl.innerHTML='<option value="" disabled selected>Önce Atölye</option>';
+    setUetMode("dropdown","");
     if(dep&&H[dep]) Object.keys(H[dep]).forEach(a=>aEl.add(new Option(a,a)));
   } else {
     const a=aEl.value;
-    uEl.innerHTML='<option value="" disabled selected>Seçiniz</option>';
-    if(dep&&a&&H[dep]?.[a]) H[dep][a].forEach(u=>uEl.add(new Option(u,u)));
+    if(a==="Diğer"){
+      setUetMode("text","");
+    } else {
+      setUetMode("dropdown","");
+      const uEl=document.getElementById("uet");
+      uEl.innerHTML='<option value="" disabled selected>Seçiniz</option>';
+      if(dep&&a&&H[dep]?.[a]) H[dep][a].forEach(u=>uEl.add(new Option(u,u)));
+    }
   }
   updBadge();
+}
+
+function setUetMode(mode, val) {
+  const wrap = document.getElementById("uetWrap");
+  if(mode==="text"){
+    wrap.innerHTML='<input type="text" id="uet" placeholder="UET adını girin" oninput="updBadge()" value="'+val+'">';
+  } else {
+    wrap.innerHTML='<select id="uet"><option value="" disabled selected>Seçiniz</option></select>';
+  }
+}
+
+function getUetValue() {
+  const el = document.getElementById("uet");
+  return el ? el.value.trim() : "";
 }
 
 function updBadge() {
@@ -810,10 +832,13 @@ async function apiCall(payload){
 // ══════════════════════════════════════
 function validate(){
   let ok=true;
-  ["departman","atolye","uet","posta"].forEach(id=>{
+  ["departman","atolye","posta"].forEach(id=>{
     const el=document.getElementById(id); el.classList.remove("err");
     if(!el.value.trim()){el.classList.add("err");ok=false;}
   });
+  // UET ayrı kontrol (select veya input olabilir)
+  const uetEl=document.getElementById("uet");
+  if(uetEl){ uetEl.classList.remove("err"); if(!uetEl.value.trim()){uetEl.classList.add("err");ok=false;} }
   if(!ok) toast("Lütfen tüm lokasyon alanlarını doldurun.","warning");
   return ok;
 }
